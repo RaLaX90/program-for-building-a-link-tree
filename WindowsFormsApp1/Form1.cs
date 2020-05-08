@@ -89,23 +89,27 @@ namespace WindowsFormsApp1
                 //Console.WriteLine(node.InnerHtml);
 
                 link = node.GetAttributeValue("href");
-                
-                counter = 0;
 
-                foreach (string tempLink in textFromFile)
+                if((link.Length > 0) && link[0] != '#')
                 {
-                    if (tempLink == link)
+                    counter = 0;
+
+                    foreach (string tempLink in textFromFile)
                     {
-                        break;
+                        if (tempLink == link)
+                        {
+                            break;
+                        }
+                        counter++;
                     }
-                    counter++;
-                }
 
-                if (counter == 51)
-                {
-                    WriteToFile(link);
-                    //Console.WriteLine("Unique link, which was written to the file, = " + link);
+                    if (counter == 51)
+                    {
+                        WriteToFile(link);
+                        //Console.WriteLine("Unique link, which was written to the file, = " + link);
+                    }
                 }
+                
             }
 
             MessageBox.Show("Parse is finished");

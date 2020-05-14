@@ -26,17 +26,25 @@ namespace WindowsFormsApp1
             InitializeComponent();
         }
 
+        CustomViewLinkParser Parser = new CustomViewLinkParser();
+
         private void button1_Click(object sender, EventArgs e)
         {
             //var txtHTML = GetPage(@"https://joblab.ru/search.php?r=vac&srregion=100&maxThread=100&submit=1");
             //var doc = new HtmlAgilityPack.HtmlDocument();   // Создание документа
             //doc.LoadHtml(txtHTML);
             //label1.Text = doc.ParsedText.ToString();
+            
+            //Parser.Parse1(textBox1.Text);
 
-            var Parser = new CustomViewLinkParser();
+        }
 
-            Parser.Parse1(textBox1.Text);
+        private void button2_Click(object sender, EventArgs e)
+        {
 
+            Parser.Parse2(textBox1.Text);
+
+            MessageBox.Show("Parse is finished");
         }
     }
 }

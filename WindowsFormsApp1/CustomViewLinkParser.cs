@@ -12,34 +12,96 @@ namespace WindowsFormsApp1
 {
     class CustomViewLinkParser
     {
-        public CustomViewLinkParser(string rootLink = "http://localhost:50897")
+        public CustomViewLinkParser(string rootLink = "http://localhost:50897/")
         {
             this.rootLink = rootLink;
 
             exceptions = File.ReadAllLines("text.txt");
 
             exceptionsCount = exceptions.Length;
+            
         }
-        
+
         private string rootLink;
 
+        //1
         private string[] exceptions;
 
         private int exceptionsCount;
 
-        private void WriteToFile(string link)
+        //2
+        private string[] visited;
+
+        private int visitedCount;
+
+        private void WriteToFile(string link, string file, int level)
         {
-            using (FileStream fstream = new FileStream("text2.txt", FileMode.Append, FileAccess.Write, FileShare.None))
+            using (FileStream fstream = new FileStream(file, FileMode.Append, FileAccess.Write, FileShare.None))
             using (var write = new StreamWriter(fstream))
             {
+                for(int i = 0; i < level; i++)
+                {
+                    write.Write("~");
+                }
                 write.WriteLine(link);
             }
         }
 
-        public void Parse1(string startParseLink)
+        //public void Parse1(string startParseLink)
+        //{
+        //    var web = new HtmlWeb();
+        //    var currentLink = startParseLink;
+        //    HtmlAgilityPack.HtmlDocument doc = web.Load(rootLink + currentLink);
+
+        //    var nodes = doc.DocumentNode.CssSelect("a").ToList();
+
+        //    int counter = 0;
+        //    string link;
+
+        //    WriteToFile("\r\n!!!" + rootLink + currentLink + "!!!", "text2.txt");
+        //    foreach (var node in nodes)
+        //    {
+        //        //Console.WriteLine(node.InnerHtml);
+
+        //        link = node.GetAttributeValue("href");
+
+        //        if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0)
+        //            && (link.IndexOf("http") < 0) && (link.IndexOf("https") < 0) && (link.IndexOf("tel") < 0))
+        //        {
+        //            counter = 0;
+
+        //            foreach (string tempLink in exceptions)
+        //            {
+        //                if (tempLink == link)
+        //                {
+        //                    break;
+        //                }
+        //                counter++;
+        //            }
+
+        //            if (counter == exceptionsCount)
+        //            {
+        //                WriteToFile(link,"text2.txt");
+        //                //Console.WriteLine("Unique link, which was written to the file, = " + link);
+        //            }
+        //        }
+
+        //    }
+
+        //    MessageBox.Show("Parse is finished");
+        //}
+
+        public void refreshVisitedCount()
+        {
+            visited = File.ReadAllLines("Visited.txt");
+
+            visitedCount = visited.Length;
+        }
+
+        public void Parse2(string ParseLink, int level = 0)
         {
             var web = new HtmlWeb();
-            var currentLink = startParseLink;
+            var currentLink = ParseLink;
             HtmlAgilityPack.HtmlDocument doc = web.Load(rootLink + currentLink);
 
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
@@ -47,37 +109,41 @@ namespace WindowsFormsApp1
             int counter = 0;
             string link;
 
-            WriteToFile("\r\n!!!" + rootLink + currentLink + "!!!");
+            WriteToFile("!!!" + rootLink + currentLink + "!!!", "Visited.txt", 0);
+            WriteToFile(currentLink, "Visited.txt", 0);
+            WriteToFile("!!!" + rootLink + currentLink + "!!!", "Marked.txt", level);
+
             foreach (var node in nodes)
             {
                 //Console.WriteLine(node.InnerHtml);
 
                 link = node.GetAttributeValue("href");
+                
+                counter = 0;
 
-                if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0) 
-                    && (link.IndexOf("http") < 0) && (link.IndexOf("https") < 0) && (link.IndexOf("tel") < 0))
+                refreshVisitedCount();
+
+                foreach (string tempLink in visited)
                 {
-                    counter = 0;
-
-                    foreach (string tempLink in exceptions)
+                    if (tempLink == link)
                     {
-                        if (tempLink == link)
-                        {
-                            break;
-                        }
-                        counter++;
+                        break;
                     }
-
-                    if (counter == exceptionsCount)
-                    {
-                        WriteToFile(link);
-                        //Console.WriteLine("Unique link, which was written to the file, = " + link);
-                    }
+                    counter++;
                 }
 
-            }
+                WriteToFile(link, "Visited.txt", 0);
+                WriteToFile(link, "Marked.txt", level + 1);
 
-            MessageBox.Show("Parse is finished");
+                if (counter == visitedCount)
+                {
+                    if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0)
+                        && (link.IndexOf("http") < 0) && (link.IndexOf("https") < 0) && (link.IndexOf("tel") < 0))
+                    {
+                        this.Parse2(link, level + 1);
+                    }
+                }
+            }
         }
     }
 }

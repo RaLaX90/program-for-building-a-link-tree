@@ -19,7 +19,7 @@ namespace WindowsFormsApp1
             exceptions = File.ReadAllLines("text.txt");
 
             exceptionsCount = exceptions.Length;
-            
+
         }
 
         private string rootLink;
@@ -39,7 +39,7 @@ namespace WindowsFormsApp1
             using (FileStream fstream = new FileStream(file, FileMode.Append, FileAccess.Write, FileShare.None))
             using (var write = new StreamWriter(fstream))
             {
-                for(int i = 0; i < level; i++)
+                for (int i = 0; i < level; i++)
                 {
                     write.Write("~");
                 }
@@ -107,43 +107,47 @@ namespace WindowsFormsApp1
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
 
             int counter = 0;
-            string link;
+            string link, linkWithoutAnchor;
 
-            WriteToFile("!!!" + rootLink + currentLink + "!!!", "Visited.txt", 0);
+            WriteToFile("!!! " + rootLink + currentLink + " !!!", "Visited.txt", 0); //can be optimazed without it
             WriteToFile(currentLink, "Visited.txt", 0);
-            WriteToFile("!!!" + rootLink + currentLink + "!!!", "Marked.txt", level);
+            WriteToFile("!!! " + rootLink + currentLink + " !!!", "Marked.txt", level); //can be optimazed without it
 
             foreach (var node in nodes)
             {
                 //Console.WriteLine(node.InnerHtml);
 
                 link = node.GetAttributeValue("href");
-                
-                counter = 0;
 
-                refreshVisitedCount();
-
-                foreach (string tempLink in visited)
-                {
-                    if (tempLink == link)
-                    {
-                        break;
-                    }
-                    counter++;
-                }
-
-                WriteToFile(link, "Visited.txt", 0);
                 WriteToFile(link, "Marked.txt", level + 1);
-
-                if (counter == visitedCount)
+                
+                if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0)
+                        && (link.IndexOf("http") < 0) && (link.IndexOf("tel") < 0) && (link.IndexOf("pdf") < 0))
                 {
-                    if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0)
-                        && (link.IndexOf("http") < 0) && (link.IndexOf("https") < 0) && (link.IndexOf("tel") < 0))
+                    counter = 0;
+
+                    refreshVisitedCount();
+
+                    linkWithoutAnchor = (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
+
+                    foreach (string tempLink in visited)
                     {
-                        this.Parse2(link, level + 1);
+                        if (tempLink == linkWithoutAnchor)
+                        {
+                            break;
+                        }
+                        counter++;
+                    }
+                    
+                    if (counter == visitedCount)
+                    {
+                        this.Parse2(linkWithoutAnchor, level + 1);
                     }
                 }
             }
+
+            WriteToFile("??? " + rootLink + currentLink + " ???", "Marked.txt", level); //can be optimazed without it 
+            WriteToFile("??? " + rootLink + currentLink + " ???", "Visited.txt", 0); //can be optimazed without it
         }
     }
 }

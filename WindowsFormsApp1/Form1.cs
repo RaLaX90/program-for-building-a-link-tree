@@ -42,8 +42,8 @@ namespace WindowsFormsApp1
         private void button2_Click(object sender, EventArgs e)
         {
 
-            Parser.Parse2(textBox1.Text);
-
+            Parser.Parse2(textBox1.Text, textBox2);
+            
             MessageBox.Show("Parse is finished");
         }
     }

@@ -15,81 +15,37 @@ namespace WindowsFormsApp1
         public CustomViewLinkParser(string rootLink = "http://localhost:50897/")
         {
             this.rootLink = rootLink;
-
-            exceptions = File.ReadAllLines("text.txt");
-
-            exceptionsCount = exceptions.Length;
-
         }
 
         private string rootLink;
 
-        //1
-        private string[] exceptions;
-
-        private int exceptionsCount;
-
-        //2
         private string[] visited;
 
         private int visitedCount;
 
-        private void WriteToFile(string link, string file, int level)
-        {
-            using (FileStream fstream = new FileStream(file, FileMode.Append, FileAccess.Write, FileShare.None))
-            using (var write = new StreamWriter(fstream))
-            {
-                for (int i = 0; i < level; i++)
-                {
-                    write.Write("~");
-                }
-                write.WriteLine(link);
-            }
-        }
-
-        //public void Parse1(string startParseLink)
+        List<Page> Pages = new List<Page>();
+        //private void WriteToFile(string link, string file, int level)
         //{
-        //    var web = new HtmlWeb();
-        //    var currentLink = startParseLink;
-        //    HtmlAgilityPack.HtmlDocument doc = web.Load(rootLink + currentLink);
-
-        //    var nodes = doc.DocumentNode.CssSelect("a").ToList();
-
-        //    int counter = 0;
-        //    string link;
-
-        //    WriteToFile("\r\n!!!" + rootLink + currentLink + "!!!", "text2.txt");
-        //    foreach (var node in nodes)
+        //    using (FileStream fstream = new FileStream(file, FileMode.Append, FileAccess.Write, FileShare.None))
+        //    using (var write = new StreamWriter(fstream))
         //    {
-        //        //Console.WriteLine(node.InnerHtml);
-
-        //        link = node.GetAttributeValue("href");
-
-        //        if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0)
-        //            && (link.IndexOf("http") < 0) && (link.IndexOf("https") < 0) && (link.IndexOf("tel") < 0))
+        //        for (int i = 0; i < level; i++)
         //        {
-        //            counter = 0;
-
-        //            foreach (string tempLink in exceptions)
-        //            {
-        //                if (tempLink == link)
-        //                {
-        //                    break;
-        //                }
-        //                counter++;
-        //            }
-
-        //            if (counter == exceptionsCount)
-        //            {
-        //                WriteToFile(link,"text2.txt");
-        //                //Console.WriteLine("Unique link, which was written to the file, = " + link);
-        //            }
+        //            write.Write("~");
         //        }
-
+        //        write.WriteLine(link);
         //    }
-
-        //    MessageBox.Show("Parse is finished");
         //}
+
+        private void WriteToTextBox(string text, TextBox textBox, int level)
+        {
+            for (int i = 0; i < level; i++)
+            {
+                textBox.Text += "~";
+            }
+            textBox.Text += text + "\r\n";
+            textBox.Update();
+        }
 
         public void refreshVisitedCount()
         {
@@ -98,20 +54,45 @@ namespace WindowsFormsApp1
             visitedCount = visited.Length;
         }
 
-        public void Parse2(string ParseLink, int level = 0)
+        public string GettingAClassAboutParentDiv(HtmlNode Child)
+        {
+            HtmlNode node = Child;
+
+            while (true)
+            {
+                if (node.ParentNode.Name == "div")
+                {
+                    return Child.ParentNode.GetAttributeValue("class");
+                }
+                else
+                {
+                    node = node.ParentNode;
+                }
+            }
+
+        }
+
+        public void Parse2(string ParseLink, TextBox textBox, int level = 0)
         {
             var web = new HtmlWeb();
-            var currentLink = ParseLink;
+            var currentLink = ParseLink; // can optimaze, if use directly
             HtmlAgilityPack.HtmlDocument doc = web.Load(rootLink + currentLink);
 
+            bool hasForms = Convert.ToBoolean(doc.DocumentNode.Descendants("form").Count());
+
+            bool hasInteractive = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_customActionPlaceholder").ToList().Count());
+           
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
 
             int counter = 0;
             string link, linkWithoutAnchor;
 
-            WriteToFile("!!! " + rootLink + currentLink + " !!!", "Visited.txt", 0); //can be optimazed without it
-            WriteToFile(currentLink, "Visited.txt", 0);
-            WriteToFile("!!! " + rootLink + currentLink + " !!!", "Marked.txt", level); //can be optimazed without it
+            Pages.Add(new Page(currentLink, rootLink + currentLink));
+                
+            //WriteToFile("!!! " + rootLink + currentLink + " !!!", "Visited.txt", 0); //can be optimazed without it
+            //WriteToFile(currentLink, "Visited.txt", 0);
+            //WriteToFile("!!! " + rootLink + currentLink + " !!!", "Marked.txt", level); //can be optimazed without it
+            WriteToTextBox("!!! " + rootLink + currentLink + " !!!", textBox, level);
 
             foreach (var node in nodes)
             {
@@ -119,8 +100,11 @@ namespace WindowsFormsApp1
 
                 link = node.GetAttributeValue("href");
 
-                WriteToFile(link, "Marked.txt", level + 1);
-                
+                GettingAClassAboutParentDiv(node);
+
+                // WriteToFile(link, "Marked.txt", level + 1);
+                WriteToTextBox(link, textBox, level + 1);
+               
                 if ((link.Length > 0) && link[0] != '#' && (link.IndexOf("datamaskingwiki") < 0) && (link.IndexOf("mailto") < 0)
                         && (link.IndexOf("http") < 0) && (link.IndexOf("tel") < 0) && (link.IndexOf("pdf") < 0))
                 {
@@ -138,16 +122,20 @@ namespace WindowsFormsApp1
                         }
                         counter++;
                     }
-                    
+
                     if (counter == visitedCount)
                     {
-                        this.Parse2(linkWithoutAnchor, level + 1);
+                        //this.Parse2(linkWithoutAnchor, level + 1);
                     }
                 }
             }
 
-            WriteToFile("??? " + rootLink + currentLink + " ???", "Marked.txt", level); //can be optimazed without it 
-            WriteToFile("??? " + rootLink + currentLink + " ???", "Visited.txt", 0); //can be optimazed without it
+            //WriteToFile("??? " + rootLink + currentLink + " ???", "Marked.txt", level); //can be optimazed without it 
+            //WriteToFile("??? " + rootLink + currentLink + " ???", "Visited.txt", 0); //can be optimazed without it
         }
     }
 }
+
+
+
+

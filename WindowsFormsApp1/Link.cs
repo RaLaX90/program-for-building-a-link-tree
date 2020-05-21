@@ -17,10 +17,10 @@ namespace WindowsFormsApp1
         RequestADownloadFile,
         OpenFileWithoutRequest,
         InstantFileDownload,
-        External, 
-        Internal, 
+        External,
+        Internal,
         Mail
-}
+    }
 
     public class Link
     {

@@ -24,9 +24,23 @@ namespace WindowsFormsApp1
         public Form1()
         {
             InitializeComponent();
+            Parser = new CustomViewLinkParser();
+            Parser.ParserProgres += Parser_ParserProgres;
         }
 
-        CustomViewLinkParser Parser = new CustomViewLinkParser();
+        ParserProgresEventArgs pars = new ParserProgresEventArgs("");
+
+        private void Parser_ParserProgres(string text, int level)
+        {
+            for (int i = 0; i < level; i++)
+            {
+                textBox2.Text += "~";
+            }
+            textBox2.Text += text + "\r\n";
+            textBox2.Update();
+        }
+
+        CustomViewLinkParser Parser;
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -42,7 +56,7 @@ namespace WindowsFormsApp1
         private void button2_Click(object sender, EventArgs e)
         {
 
-            Parser.Parse2(textBox1.Text, textBox2);
+            Parser.Parse(textBox1.Text);
             
             MessageBox.Show("Parse is finished");
         }

@@ -8,7 +8,7 @@ namespace WindowsFormsApp1
 {
     public class Page
     {
-        public Page(string PageTitle, string PageURL, bool HaveForm = false, bool HaveInteractive = false)
+        public Page(string PageTitle, string PageURL, bool HaveForm, bool HaveInteractive)
         {
             this.Title = PageTitle;
 
@@ -17,6 +17,8 @@ namespace WindowsFormsApp1
             this.HaveForm = HaveForm;
 
             this.HaveInteractive = HaveInteractive;
+
+
         }
 
         private List<Section> Sections = new List<Section>();

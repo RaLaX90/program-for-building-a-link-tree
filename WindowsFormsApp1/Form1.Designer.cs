@@ -42,7 +42,7 @@
             this.button1.TabIndex = 0;
             this.button1.Text = "Parse1";
             this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.button1.Click += new System.EventHandler(this.Button1_Click);
             // 
             // textBox1
             // 
@@ -50,7 +50,7 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(234, 22);
             this.textBox1.TabIndex = 2;
-            this.textBox1.Text = "/Default.aspx";
+            this.textBox1.Text = "http://localhost:50897/Default.aspx";
             // 
             // button2
             // 
@@ -60,7 +60,7 @@
             this.button2.TabIndex = 3;
             this.button2.Text = "Parse2";
             this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
+            this.button2.Click += new System.EventHandler(this.Button2_Click);
             // 
             // textBox2
             // 
@@ -82,6 +82,7 @@
             this.Controls.Add(this.button1);
             this.Name = "Form1";
             this.Text = "Form1";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.ResumeLayout(false);
             this.PerformLayout();
 

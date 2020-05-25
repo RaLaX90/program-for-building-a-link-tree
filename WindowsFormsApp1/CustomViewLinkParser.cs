@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -12,146 +13,197 @@ namespace WindowsFormsApp1
 {
     public class CustomViewLinkParser
     {
-        public CustomViewLinkParser(string rootLink = "http://localhost:50897/")
+        public CustomViewLinkParser(string _rootLink = "http://localhost:50897/")
         {
-            this._rootLink = rootLink;
+            this._rootLink = _rootLink;
         }
 
         private readonly string _rootLink;
 
-        private string[] _visited;
+        public delegate void ParserProgresEventHandler(ParserProgresEventArgs Args, int level);
 
-        private int _visitedCount;
+        public event ParserProgresEventHandler PageAnalyzed;
 
-        public delegate void ParserProgresEventHandler(string text, int level);
+        public event ParserProgresEventHandler ParsingComplite;
 
-        public event ParserProgresEventHandler ParserProgres;
-
-        private List<Page> _pages = new List<Page>();
-
-        private void WriteToFile(string link, string file, int level)
+        private Section FindSection(HtmlNode child, Page page)
         {
-            using (FileStream fstream = new FileStream(file, FileMode.Append, FileAccess.Write, FileShare.None))
-            using (var write = new StreamWriter(fstream))
+            //HtmlNode node = child;
+
+            //while (true)
+            //{
+            //    if (node.ParentNode.Name == "div")
+            //    {
+            //        return child.ParentNode.GetAttributeValue("class");
+            //    }
+            //    else
+            //    {
+            //        node = node.ParentNode;
+            //    }
+            //}
+
+            // TODO: need to upgrade
+            if (page.Sections.Length == 0) //temporary solutuion
             {
-                for (int i = 0; i < level; i++)
-                {
-                    write.Write("~");
-                }
-                write.WriteLine(link);
-            }
-        }
-
-        public void RefreshVisitedCount()
-        {
-            _visited = File.ReadAllLines("Visited.txt");
-
-            _visitedCount = _visited.Length;
-        }
-
-        public string GettingAClassAboutParentDiv(HtmlNode child)
-        {
-            HtmlNode node = child;
-
-            while (true)
-            {
-                if (node.ParentNode.Name == "div")
-                {
-                    return child.ParentNode.GetAttributeValue("class");
-                }
-                else
-                {
-                    node = node.ParentNode;
-                }
+                page.AddSection("defaultSection");
             }
 
+            return page.Sections[0];
+
         }
 
-        public void ParsingAndArraying(HtmlNode node)
+        private string GetLinkTitle(HtmlNode node)
         {
-            var parentClass = GettingAClassAboutParentDiv(node);
-            var linkURL = node.GetAttributeValue("href");
-            var sectionsCount = _pages[_pages.Count - 1].WhatContainsInSections().Count;
-            var last = _pages.Last(); 
-            if (Convert.ToBoolean(sectionsCount))
+            if (!string.IsNullOrWhiteSpace(node.GetAttributeValue("title"))) // !
             {
-                if (parentClass != _pages[_pages.Count - 1].WhatContainsInSections()[sectionsCount - 1].Title) // !
-                {
-                    _pages[_pages.Count - 1].AddSection(GettingAClassAboutParentDiv(node));
-                }
+                return node.GetAttributeValue("title");
             }
             else
             {
-                _pages[_pages.Count - 1].AddSection(GettingAClassAboutParentDiv(node));
+                return node.InnerText;
             }
-
-            sectionsCount = _pages[_pages.Count - 1].WhatContainsInSections().Count;
-
-            _pages[_pages.Count - 1].WhatContainsInSections()[sectionsCount - 1].AddLink(node.InnerHtml, LinkType.Internal, linkURL);
         }
 
-        public void Parse(string parseLink, int level = 0)
+        private LinkType GetLinkType(HtmlNode node, Page page)
+        {
+            // TODO: need to upgrade
+            return LinkType.Internal;
+        }
+
+        private void AddLinkToPage(HtmlNode node, Page page)
+        {
+            var section = FindSection(node, page);
+            var linkTitle = GetLinkTitle(node);
+            var linkType = GetLinkType(node, page);
+            var linkURL = node.GetAttributeValue("href");
+
+            section.AddLink(linkTitle, linkType, linkURL);
+        }
+
+        private string GetLinkWithoutAnchor(string link) => (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
+
+        private bool IsExternalLink(string link)
+        {
+            Uri uri = new Uri(link, UriKind.RelativeOrAbsolute);
+
+            if (!uri.IsAbsoluteUri || uri.Host.ToLower() == "localhost")
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsLinkValid(string link)
+        {
+            var linkWithoutAnchor = GetLinkWithoutAnchor(link);
+
+            if ((linkWithoutAnchor.Length > 0) && (linkWithoutAnchor.IndexOf("mailto") < 0) && (linkWithoutAnchor.IndexOf("tel") < 0)
+                && (linkWithoutAnchor.IndexOf("pdf") < 0))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private string GetFullURL(string URL)
+        {
+            Uri uri = new Uri(URL, UriKind.RelativeOrAbsolute);
+
+            if (uri.IsAbsoluteUri)
+            {
+                return URL;
+            }
+            else
+            {
+                return _rootLink + URL;
+            }
+        }
+
+        private void OnPageAnalyzed(Page page)
+        {
+            if (PageAnalyzed != null)
+            {
+                ParserProgresEventArgs args = new ParserProgresEventArgs();
+                args.Page = page;
+                PageAnalyzed(args, 1);
+            }
+        }
+
+        private Page ParsePage(string parseLink)
         {
             var web = new HtmlWeb();
-            var currentLink = parseLink; // can optimaze, if use directly
-            HtmlAgilityPack.HtmlDocument doc = web.Load(_rootLink + currentLink);
 
-            //TODO: create a dynamic collection of object type on the page
+            HtmlAgilityPack.HtmlDocument doc = web.Load(GetFullURL(parseLink));
+
+            // TODO: create a dynamic collection of object type on the page
             bool hasForm = Convert.ToBoolean(doc.DocumentNode.Descendants("form").Count());
             bool hasInteractive = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_customActionPlaceholder").ToList().Count());
 
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
-            
-            //WriteToFile("!!! " + rootLink + currentLink + " !!!", "Visited.txt", 0); //can be optimazed without it
-            WriteToFile(currentLink, "Visited.txt", 0);
-            //WriteToFile("!!! " + rootLink + currentLink + " !!!", "Marked.txt", level); //can be optimazed without it
-            ParserProgres("!!! " + _rootLink + currentLink + " !!!", 0); //can be optimazed without it 
 
-            _pages.Add(new Page(currentLink, _rootLink + currentLink, hasForm, hasInteractive));
-            
+            //var linkWithoutRootLink = parseLink.Remove(parseLink.LastIndexOf("/")); //////////////////////////////////////////////
+            var page = new Page(parseLink, parseLink, hasForm, hasInteractive);
+
             foreach (var node in nodes)
             {
-                //Console.WriteLine(node.InnerHtml);
-
-                ParsingAndArraying(node);
-
-                // WriteToFile(link, "Marked.txt", level + 1);
-                ParserProgres(node.GetAttributeValue("href"), level + 1);
+                AddLinkToPage(node, page);
             }
 
-            int counter = 0;
-            string linkURL, linkWithoutAnchor;
+            return page;
+        }
 
-            foreach (var node in nodes)
+        public List<Page> BuildMap(string parseLink, CancellationToken token)
+        {
+            List<Page> pages = new List<Page>();
+            HashSet<string> visited = new HashSet<string>();
+            Queue<string> analysisQueue = new Queue<string>();
+
+            Page page;
+
+            if (!IsLinkValid(parseLink))
             {
-                linkURL = node.GetAttributeValue("href"); // extra work
+                throw new Exception("Unindexable link");
+            }
 
-                if ((linkURL.Length > 0) && linkURL[0] != '#' && (linkURL.IndexOf("datamaskingwiki") < 0) && (linkURL.IndexOf("mailto") < 0)
-                        && (linkURL.IndexOf("http") < 0) && (linkURL.IndexOf("tel") < 0) && (linkURL.IndexOf("pdf") < 0))
+            string pureLink = GetLinkWithoutAnchor(parseLink);
+
+            visited.Add(pureLink);
+            analysisQueue.Enqueue(pureLink);
+
+            while (analysisQueue.Count > 0)
+            {
+                page = ParsePage(analysisQueue.Dequeue());
+                pages.Add(page);
+
+                OnPageAnalyzed(page);
+
+                foreach (var link in page.AllLinks)
                 {
-                    counter = 0;
-
-                    RefreshVisitedCount();
-
-                    linkWithoutAnchor = (linkURL.IndexOf("#") > -1) ? linkURL.Remove(linkURL.IndexOf("#")) : linkURL;
-
-                    foreach (string tempLink in _visited)
+                    if (!IsLinkValid(link.URL))
                     {
-                        if (tempLink == linkWithoutAnchor)
-                        {
-                            break;
-                        }
-                        counter++;
+                        continue;
                     }
 
-                    if (counter == _visitedCount)
+                    if (IsExternalLink(link.URL) || link.URL.Contains("datamaskingwiki"))
                     {
-                        //this.Parse(linkWithoutAnchor, level + 1);
+                        continue;
+                    }
+
+                    pureLink = GetLinkWithoutAnchor(link.URL);
+
+                    if (!visited.Contains(pureLink))
+                    {
+                        visited.Add(pureLink);
+                        analysisQueue.Enqueue(pureLink);
                     }
                 }
             }
-            //WriteToFile("??? " + rootLink + currentLink + " ???", "Marked.txt", level); //can be optimazed without it 
-            //WriteToFile("??? " + rootLink + currentLink + " ???", "Visited.txt", 0); //can be optimazed without it
+
+            return pages;
         }
     }
 }

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -25,40 +26,68 @@ namespace WindowsFormsApp1
         {
             InitializeComponent();
             Parser = new CustomViewLinkParser();
-            Parser.ParserProgres += Parser_ParserProgres;
+            Parser.PageAnalyzed += Parser_ParserProgres;
+            Parser.ParsingComplite += Parser_ParsingComplite;
         }
 
-        ParserProgresEventArgs pars = new ParserProgresEventArgs("");
-
-        private void Parser_ParserProgres(string text, int level)
+        private void Parser_ParsingComplite(ParserProgresEventArgs Args, int level)
         {
-            for (int i = 0; i < level; i++)
-            {
-                textBox2.Text += "~";
-            }
-            textBox2.Text += text + "\r\n";
-            textBox2.Update();
+            // TODO: need to upgrade
         }
 
-        CustomViewLinkParser Parser;
+        private void Parser_ParserProgres(ParserProgresEventArgs Args, int level)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
 
-        private void button1_Click(object sender, EventArgs e)
+            stringBuilder.AppendLine(Args.Page.URL);
+
+            foreach (var url in Args.Page.AllLinks)
+            {
+                stringBuilder.AppendLine($"~ {url.URL}");
+            }
+            Action action = () => textBox2.Text += stringBuilder;
+            BeginInvoke(action);
+        }
+        
+        private void Button1_Click(object sender, EventArgs e)
         {
             //var txtHTML = GetPage(@"https://joblab.ru/search.php?r=vac&srregion=100&maxThread=100&submit=1");
             //var doc = new HtmlAgilityPack.HtmlDocument();   // Создание документа
             //doc.LoadHtml(txtHTML);
             //label1.Text = doc.ParsedText.ToString();
-            
-            //Parser.Parse1(textBox1.Text);
 
+            //Parser.Parse1(textBox1.Text);
         }
 
-        private void button2_Click(object sender, EventArgs e)
-        {
+        CustomViewLinkParser Parser;
+        Task task;
+        CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
 
-            Parser.Parse(textBox1.Text);
-            
-            MessageBox.Show("Parse is finished");
+        private void Button2_Click(object sender, EventArgs e)
+        {
+            CancellationToken token = cancelTokenSource.Token;
+
+            var url = textBox1.Text;
+
+            task = Task.Run(() =>
+            {
+                System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+                stopwatch.Start();
+
+                var result = Parser.BuildMap(url, token);
+
+                stopwatch.Stop();
+
+                var time = stopwatch.Elapsed;
+                
+                //task.ContinueWith(t => MessageBox.Show("Parse is finished"));
+                MessageBox.Show($"Parse is finished from {time}");
+            });
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            cancelTokenSource.Cancel();
         }
     }
 }

@@ -13,15 +13,15 @@ namespace WindowsFormsApp1
             this.Title = SectionTitle;
         }
 
-        private List<Link> Links = new List<Link>();
+        private List<Link> _links = new List<Link>();
 
         public string Title { get; set; }
 
         public void AddLink(string LinkTitle, LinkType LinkType, string LinkURL)
         {
-            Links.Add(new Link(LinkTitle, LinkType, LinkURL) { });
+            _links.Add(new Link(LinkTitle, LinkType, LinkURL) { });
         }
-
-        public List<Link> WhatContainsInLinks() => this.Links;
+        
+        public Link[] Links => this._links.ToArray();
     }
 }

@@ -8,10 +8,6 @@ namespace WindowsFormsApp1
 {
     public class ParserProgresEventArgs : EventArgs
     {
-        public ParserProgresEventArgs(string link)
-        {
-            this.link = link;
-        }
-        public string link { get; set; }
+        public Page Page { get; set; }
     }
 }

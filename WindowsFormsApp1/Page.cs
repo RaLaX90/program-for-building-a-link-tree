@@ -8,21 +8,8 @@ namespace WindowsFormsApp1
 {
     public class Page
     {
-        public Page(string PageTitle, string PageURL, bool HaveForm, bool HaveInteractive)
-        {
-            this.Title = PageTitle;
-
-            this.URL = PageURL;
-
-            this.HaveForm = HaveForm;
-
-            this.HaveInteractive = HaveInteractive;
-
-
-        }
-
-        private List<Section> Sections = new List<Section>();
-        private List<Video> Videos = new List<Video>();
+        private List<Section> _sections = new List<Section>();
+        private List<Video> _videos = new List<Video>();
 
         public string Title { get; set; }
 
@@ -32,18 +19,31 @@ namespace WindowsFormsApp1
 
         public bool HaveInteractive { get; set; }
 
+        public Section[] Sections => this._sections.ToArray(); //TODO: need to optimaze
+
+        public Video[] Videos => this._videos.ToArray(); //TODO: need to optimaze
+
+        public Link[] AllLinks => this._sections.SelectMany(x => x.Links).ToArray(); //TODO: need to optimaze
+
+        public Page(string PageTitle, string PageURL, bool HaveForm, bool HaveInteractive)
+        {
+            this.Title = PageTitle;
+
+            this.URL = PageURL;
+
+            this.HaveForm = HaveForm;
+
+            this.HaveInteractive = HaveInteractive;
+        }
+
         public void AddSection(string SectionTitle)
         {
-            Sections.Add(new Section(SectionTitle) { });
+            _sections.Add(new Section(SectionTitle) { });
         }
 
         public void AddVideo(string VideoTitle, string VideoURL)
         {
-            Videos.Add(new Video(VideoTitle, VideoURL) { });
+            _videos.Add(new Video(VideoTitle, VideoURL) { });
         }
-
-        public List<Section> WhatContainsInSections() => this.Sections;
-
-        public List<Video> WhatContainsInVideos() => this.Videos;
     }
 }

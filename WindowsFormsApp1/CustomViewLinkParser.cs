@@ -24,8 +24,6 @@ namespace WindowsFormsApp1
 
         public event ParserProgresEventHandler PageAnalyzed;
 
-        public event ParserProgresEventHandler ParsingComplite;
-
         private Section FindSection(HtmlNode child, Page page)
         {
             //HtmlNode node = child;
@@ -78,6 +76,13 @@ namespace WindowsFormsApp1
             var linkURL = node.GetAttributeValue("href");
 
             section.AddLink(linkTitle, linkType, linkURL);
+        }
+
+        private void AddVideoToPage(HtmlNode video, Page page)
+        {
+            string videoTitle = "";
+            string videoURL = video.FirstChild.GetAttributeValue("src");
+            page.AddVideo(videoTitle, videoURL);
         }
 
         private string GetLinkWithoutAnchor(string link) => (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
@@ -142,11 +147,23 @@ namespace WindowsFormsApp1
             // TODO: create a dynamic collection of object type on the page
             bool hasForm = Convert.ToBoolean(doc.DocumentNode.Descendants("form").Count());
             bool hasInteractive = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_customActionPlaceholder").ToList().Count());
-
+            string title = doc.DocumentNode.CssSelect("head title").ToList()[0].InnerText.Replace(Environment.NewLine, "").Replace("\t", "");
+            
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
 
             //var linkWithoutRootLink = parseLink.Remove(parseLink.LastIndexOf("/")); //////////////////////////////////////////////
-            var page = new Page(parseLink, parseLink, hasForm, hasInteractive);
+            var page = new Page(title, parseLink, hasForm, hasInteractive);
+
+            bool hasVideo = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList().Count());
+            if (hasVideo)
+            {
+                var spanBeforeIframe1 = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList()[0];
+                var lul = doc.DocumentNode.CssSelect(".fright").ToList();
+                var spanBeforeIframe2 = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid2").ToList()[0];
+               
+                AddVideoToPage(spanBeforeIframe1, page);
+                AddVideoToPage(spanBeforeIframe2, page);
+            }
 
             foreach (var node in nodes)
             {
@@ -156,7 +173,7 @@ namespace WindowsFormsApp1
             return page;
         }
 
-        public List<Page> BuildMap(string parseLink, CancellationToken token)
+        public List<Page> BuildMap(string parseLink/*, CancellationToken token*/)
         {
             List<Page> pages = new List<Page>();
             HashSet<string> visited = new HashSet<string>();
@@ -176,6 +193,12 @@ namespace WindowsFormsApp1
 
             while (analysisQueue.Count > 0)
             {
+                //if (token.IsCancellationRequested)
+                //{
+                //    MessageBox.Show("Operation aborted by closing window");
+                //    token.ThrowIfCancellationRequested();
+                //}
+
                 page = ParsePage(analysisQueue.Dequeue());
                 pages.Add(page);
 

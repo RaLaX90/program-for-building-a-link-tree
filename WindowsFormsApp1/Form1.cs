@@ -27,12 +27,12 @@ namespace WindowsFormsApp1
             InitializeComponent();
             Parser = new CustomViewLinkParser();
             Parser.PageAnalyzed += Parser_ParserProgres;
-            Parser.ParsingComplite += Parser_ParsingComplite;
         }
 
-        private void Parser_ParsingComplite(ParserProgresEventArgs Args, int level)
+        private void ParsingComplete(List<Page> pages/*, CancellationToken token*/)
         {
             // TODO: need to upgrade
+            MessageBox.Show("Parse is complete");
         }
 
         private void Parser_ParserProgres(ParserProgresEventArgs Args, int level)
@@ -48,7 +48,7 @@ namespace WindowsFormsApp1
             Action action = () => textBox2.Text += stringBuilder;
             BeginInvoke(action);
         }
-        
+
         private void Button1_Click(object sender, EventArgs e)
         {
             //var txtHTML = GetPage(@"https://joblab.ru/search.php?r=vac&srregion=100&maxThread=100&submit=1");
@@ -59,9 +59,8 @@ namespace WindowsFormsApp1
             //Parser.Parse1(textBox1.Text);
         }
 
-        CustomViewLinkParser Parser;
-        Task task;
-        CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
+        private CustomViewLinkParser Parser;
+        private CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
 
         private void Button2_Click(object sender, EventArgs e)
         {
@@ -69,25 +68,26 @@ namespace WindowsFormsApp1
 
             var url = textBox1.Text;
 
-            task = Task.Run(() =>
+            Task.Run(() =>
             {
                 System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
                 stopwatch.Start();
 
-                var result = Parser.BuildMap(url, token);
+                var result = Parser.BuildMap(url/*, token*/);
 
                 stopwatch.Stop();
 
                 var time = stopwatch.Elapsed;
-                
-                //task.ContinueWith(t => MessageBox.Show("Parse is finished"));
+
                 MessageBox.Show($"Parse is finished from {time}");
-            });
+
+                return result;
+            }, token).ContinueWith(t => ParsingComplete(t.Result/*, token*/));
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            cancelTokenSource.Cancel();
+            //cancelTokenSource.Cancel();
         }
     }
 }

@@ -64,6 +64,54 @@ namespace WindowsFormsApp1
 
         private LinkType GetLinkType(HtmlNode node, Page page)
         {
+            HashSet<string> instantlyOpeningFiles = new HashSet<string>() { "http://www.ffiec.gov/exam/infobase/documents/02-con-501b_gramm_leach_bliley_act-991112.pdf",
+             "http://www.gpo.gov/fdsys/pkg/CFR-2012-title16-vol1/pdf/CFR-2012-title16-vol1-sec313-3.pdf", "Downloads/data_deidentification_terms.pdf"};
+
+            var nodeAttributeHeadertext = node.GetAttributeValue("headertext");
+            var nodeAttributeHref = node.GetAttributeValue("href");
+
+            if (nodeAttributeHeadertext == "Request a Quote"/* || nodeAttributeHref.Contains("#RequestQuote")*/) // quote
+            {
+                return LinkType.RequestAQuote;
+            }
+            else if (nodeAttributeHeadertext == "Request a Webinar" || nodeAttributeHref.Contains("#RequestWebinar")) // webinar
+            {
+                return LinkType.RequestAWebinar;
+            }
+            else if (nodeAttributeHeadertext == "Request a Trial"/* || nodeAttributeHref.Contains("#RequestTrial")*/) // trial
+            {
+                return LinkType.RequestADownloadFile;
+            }
+            else if (nodeAttributeHeadertext == "Download a File" || nodeAttributeHeadertext == "Download file" 
+                || node.GetAttributeValue("href").Contains("#RequestDownload")) // download a file (*)
+            {
+                return LinkType.RequestADownloadFile;
+            }
+            else if (nodeAttributeHref.Contains("mailto:")) // mail to
+            {
+                return LinkType.Mail;
+            }
+            else if (nodeAttributeHref.Contains("fwlink")) // instant download a file 
+            {
+                return LinkType.InstantFileDownload;
+            }
+            else if (instantlyOpeningFiles.Contains(nodeAttributeHref)) // open file without request
+            {
+                return LinkType.OpenFileWithoutRequest;
+            }
+            else if (node.ParentNode.ParentNode.HasClass("openClose")) // dropdown menu tab
+            {
+                return LinkType.DropDownMenuTab;
+            }
+            else if (node.ParentNode.HasClass("dropdown-content")) // dropdown menu item
+            {
+                return LinkType.DropDownMenuItem;
+            }
+            else if (IsExternalLink(nodeAttributeHref)) // external
+            {
+                return LinkType.External;
+            }
+
             // TODO: need to upgrade
             return LinkType.Internal;
         }
@@ -78,11 +126,20 @@ namespace WindowsFormsApp1
             section.AddLink(linkTitle, linkType, linkURL);
         }
 
-        private void AddVideoToPage(HtmlNode video, Page page)
+        private void AddVideoToPage(HtmlAgilityPack.HtmlDocument doc, Page page)
         {
-            string videoTitle = "";
-            string videoURL = video.FirstChild.GetAttributeValue("src");
-            page.AddVideo(videoTitle, videoURL);
+            var videoTitle = doc.DocumentNode.CssSelect(".fright h3").ToList();
+
+            if (page.Videos.Count() < 1)
+            {
+                string videoURL = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList()[0].FirstChild.GetAttributeValue("src");
+                page.AddVideo(videoTitle[0].InnerText, videoURL);
+            }
+            else
+            {
+                string videoURL = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid2").ToList()[0].FirstChild.GetAttributeValue("src");
+                page.AddVideo(videoTitle[1].InnerText, videoURL);
+            }
         }
 
         private string GetLinkWithoutAnchor(string link) => (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
@@ -103,8 +160,8 @@ namespace WindowsFormsApp1
         {
             var linkWithoutAnchor = GetLinkWithoutAnchor(link);
 
-            if ((linkWithoutAnchor.Length > 0) && (linkWithoutAnchor.IndexOf("mailto") < 0) && (linkWithoutAnchor.IndexOf("tel") < 0)
-                && (linkWithoutAnchor.IndexOf("pdf") < 0))
+            if ((linkWithoutAnchor.Length > 0) && (linkWithoutAnchor.IndexOf("mailto") < 0)
+                && (linkWithoutAnchor.IndexOf("tel") < 0) && (linkWithoutAnchor.IndexOf("pdf") < 0))
             {
                 return true;
             }
@@ -145,24 +202,30 @@ namespace WindowsFormsApp1
             HtmlAgilityPack.HtmlDocument doc = web.Load(GetFullURL(parseLink));
 
             // TODO: create a dynamic collection of object type on the page
-            bool hasForm = Convert.ToBoolean(doc.DocumentNode.Descendants("form").Count());
-            bool hasInteractive = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_customActionPlaceholder").ToList().Count());
-            string title = doc.DocumentNode.CssSelect("head title").ToList()[0].InnerText.Replace(Environment.NewLine, "").Replace("\t", "");
-            
+
+            string title;
+            var hasTitle = doc.DocumentNode.CssSelect("head title").Any();
+            if (hasTitle)
+            {
+                title = doc.DocumentNode.CssSelect("head title").First().InnerText.Replace(Environment.NewLine, "").Replace("\t", "");
+            }
+            else
+            {
+                title = parseLink;
+            }
+            bool hasForm = doc.DocumentNode.CssSelect("form").Any();
+            bool hasInteractive = doc.DocumentNode.CssSelect("#cpMainContent_customActionPlaceholder").Any();
+
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
 
             //var linkWithoutRootLink = parseLink.Remove(parseLink.LastIndexOf("/")); //////////////////////////////////////////////
             var page = new Page(title, parseLink, hasForm, hasInteractive);
 
-            bool hasVideo = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList().Count());
+            var hasVideo = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList().Count());
             if (hasVideo)
             {
-                var spanBeforeIframe1 = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList()[0];
-                var lul = doc.DocumentNode.CssSelect(".fright").ToList();
-                var spanBeforeIframe2 = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid2").ToList()[0];
-               
-                AddVideoToPage(spanBeforeIframe1, page);
-                AddVideoToPage(spanBeforeIframe2, page);
+                AddVideoToPage(doc, page);
+                AddVideoToPage(doc, page);
             }
 
             foreach (var node in nodes)

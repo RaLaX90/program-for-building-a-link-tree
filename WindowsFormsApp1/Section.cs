@@ -21,7 +21,7 @@ namespace WindowsFormsApp1
         {
             _links.Add(new Link(LinkTitle, LinkType, LinkURL) { });
         }
-        
+
         public Link[] Links => this._links.ToArray();
     }
 }

@@ -52,7 +52,7 @@ namespace WindowsFormsApp1
 
         private string GetLinkTitle(HtmlNode node)
         {
-            if (!string.IsNullOrWhiteSpace(node.GetAttributeValue("title"))) // !
+            if (!string.IsNullOrWhiteSpace(node.GetAttributeValue("title")))
             {
                 return node.GetAttributeValue("title");
             }
@@ -62,40 +62,44 @@ namespace WindowsFormsApp1
             }
         }
 
-        private LinkType GetLinkType(HtmlNode node, Page page)
+        private LinkType GetLinkType(HtmlNode node)
         {
-            HashSet<string> instantlyOpeningFiles = new HashSet<string>() { "http://www.ffiec.gov/exam/infobase/documents/02-con-501b_gramm_leach_bliley_act-991112.pdf",
-             "http://www.gpo.gov/fdsys/pkg/CFR-2012-title16-vol1/pdf/CFR-2012-title16-vol1-sec313-3.pdf", "Downloads/data_deidentification_terms.pdf"};
+            HashSet<string> instantlyOpeningFiles = new HashSet<string>()
+            {
+                "http://www.ffiec.gov/exam/infobase/documents/02-con-501b_gramm_leach_bliley_act-991112.pdf",
+                "http://www.gpo.gov/fdsys/pkg/CFR-2012-title16-vol1/pdf/CFR-2012-title16-vol1-sec313-3.pdf",
+                "Downloads/data_deidentification_terms.pdf"
+            };
 
-            var nodeAttributeHeadertext = node.GetAttributeValue("headertext");
-            var nodeAttributeHref = node.GetAttributeValue("href");
+            var headertext = node.GetAttributeValue("headertext");
+            var href = node.GetAttributeValue("href");
 
-            if (nodeAttributeHeadertext == "Request a Quote"/* || nodeAttributeHref.Contains("#RequestQuote")*/) // quote
+            if (headertext == "Request a Quote"/* || nodeAttributeHref.Contains("#RequestQuote")*/) // quote
             {
                 return LinkType.RequestAQuote;
             }
-            else if (nodeAttributeHeadertext == "Request a Webinar" || nodeAttributeHref.Contains("#RequestWebinar")) // webinar
+            else if (headertext == "Request a Webinar" || href.Contains("#RequestWebinar")) // webinar
             {
                 return LinkType.RequestAWebinar;
             }
-            else if (nodeAttributeHeadertext == "Request a Trial"/* || nodeAttributeHref.Contains("#RequestTrial")*/) // trial
+            else if (headertext == "Request a Trial"/* || nodeAttributeHref.Contains("#RequestTrial")*/) // trial
             {
-                return LinkType.RequestADownloadFile;
+                return LinkType.RequestATrial;
             }
-            else if (nodeAttributeHeadertext == "Download a File" || nodeAttributeHeadertext == "Download file" 
+            else if (headertext == "Download a File" || headertext == "Download file"
                 || node.GetAttributeValue("href").Contains("#RequestDownload")) // download a file (*)
             {
                 return LinkType.RequestADownloadFile;
             }
-            else if (nodeAttributeHref.Contains("mailto:")) // mail to
+            else if (href.Contains("mailto:")) // mail to
             {
                 return LinkType.Mail;
             }
-            else if (nodeAttributeHref.Contains("fwlink")) // instant download a file 
+            else if (href.Contains("fwlink")) // instant download a file 
             {
                 return LinkType.InstantFileDownload;
             }
-            else if (instantlyOpeningFiles.Contains(nodeAttributeHref)) // open file without request
+            else if (instantlyOpeningFiles.Contains(href)) // open file without request
             {
                 return LinkType.OpenFileWithoutRequest;
             }
@@ -107,21 +111,23 @@ namespace WindowsFormsApp1
             {
                 return LinkType.DropDownMenuItem;
             }
-            else if (IsExternalLink(nodeAttributeHref)) // external
+            else if (IsExternalLink(href)) // external
             {
                 return LinkType.External;
             }
-
-            // TODO: need to upgrade
-            return LinkType.Internal;
+            else
+            {
+                // TODO: need to upgrade
+                return LinkType.Internal;
+            }
         }
 
         private void AddLinkToPage(HtmlNode node, Page page)
         {
             var section = FindSection(node, page);
             var linkTitle = GetLinkTitle(node);
-            var linkType = GetLinkType(node, page);
-            var linkURL = node.GetAttributeValue("href");
+            var linkType = GetLinkType(node);
+            var linkURL = GetFullURL(node.GetAttributeValue("href"));
 
             section.AddLink(linkTitle, linkType, linkURL);
         }
@@ -142,7 +148,12 @@ namespace WindowsFormsApp1
             }
         }
 
-        private string GetLinkWithoutAnchor(string link) => (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
+        private string GetLinkWithoutAnchorAndTag(string link)
+        {
+            var linkWithoutAnchor = (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
+            var linkWithoutTag = (linkWithoutAnchor.IndexOf("?") > -1) ? linkWithoutAnchor.Remove(link.IndexOf("?")) : linkWithoutAnchor;
+            return linkWithoutTag;
+        } 
 
         private bool IsExternalLink(string link)
         {
@@ -158,10 +169,10 @@ namespace WindowsFormsApp1
 
         private bool IsLinkValid(string link)
         {
-            var linkWithoutAnchor = GetLinkWithoutAnchor(link);
+            var linkWithoutAnchorAndTag = GetLinkWithoutAnchorAndTag(link);
 
-            if ((linkWithoutAnchor.Length > 0) && (linkWithoutAnchor.IndexOf("mailto") < 0)
-                && (linkWithoutAnchor.IndexOf("tel") < 0) && (linkWithoutAnchor.IndexOf("pdf") < 0))
+            if ((linkWithoutAnchorAndTag.Length > 0) && (linkWithoutAnchorAndTag.IndexOf("mailto") < 0)
+                && (linkWithoutAnchorAndTag.IndexOf("tel") < 0) && (linkWithoutAnchorAndTag.IndexOf("pdf") < 0))
             {
                 return true;
             }
@@ -173,7 +184,7 @@ namespace WindowsFormsApp1
 
         private string GetFullURL(string URL)
         {
-            Uri uri = new Uri(URL, UriKind.RelativeOrAbsolute);
+            Uri uri = new Uri(GetLinkWithoutAnchorAndTag(URL), UriKind.RelativeOrAbsolute);
 
             if (uri.IsAbsoluteUri)
             {
@@ -181,7 +192,8 @@ namespace WindowsFormsApp1
             }
             else
             {
-                return _rootLink + URL;
+                Uri rootURI = new Uri(_rootLink);
+                return rootURI.Combine(URL.Trim()).ToString();
             }
         }
 
@@ -199,9 +211,7 @@ namespace WindowsFormsApp1
         {
             var web = new HtmlWeb();
 
-            HtmlAgilityPack.HtmlDocument doc = web.Load(GetFullURL(parseLink));
-
-            // TODO: create a dynamic collection of object type on the page
+            HtmlAgilityPack.HtmlDocument doc = web.Load(parseLink);
 
             string title;
             var hasTitle = doc.DocumentNode.CssSelect("head title").Any();
@@ -213,12 +223,13 @@ namespace WindowsFormsApp1
             {
                 title = parseLink;
             }
+
+            // TODO: create a dynamic collection of object type on the page
             bool hasForm = doc.DocumentNode.CssSelect("form").Any();
             bool hasInteractive = doc.DocumentNode.CssSelect("#cpMainContent_customActionPlaceholder").Any();
 
             var nodes = doc.DocumentNode.CssSelect("a").ToList();
 
-            //var linkWithoutRootLink = parseLink.Remove(parseLink.LastIndexOf("/")); //////////////////////////////////////////////
             var page = new Page(title, parseLink, hasForm, hasInteractive);
 
             var hasVideo = Convert.ToBoolean(doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList().Count());
@@ -249,10 +260,11 @@ namespace WindowsFormsApp1
                 throw new Exception("Unindexable link");
             }
 
-            string pureLink = GetLinkWithoutAnchor(parseLink);
+            string fullLink = GetFullURL(parseLink);
+            string pureLink;
 
-            visited.Add(pureLink);
-            analysisQueue.Enqueue(pureLink);
+            visited.Add(fullLink.ToLower());
+            analysisQueue.Enqueue(fullLink);
 
             while (analysisQueue.Count > 0)
             {
@@ -279,11 +291,11 @@ namespace WindowsFormsApp1
                         continue;
                     }
 
-                    pureLink = GetLinkWithoutAnchor(link.URL);
+                    pureLink = GetLinkWithoutAnchorAndTag(link.URL);
 
-                    if (!visited.Contains(pureLink))
+                    if (!visited.Contains(pureLink.ToLower()))
                     {
-                        visited.Add(pureLink);
+                        visited.Add(pureLink.ToLower());
                         analysisQueue.Enqueue(pureLink);
                     }
                 }

@@ -14,12 +14,14 @@ namespace WindowsFormsApp1
         Contents,
         RequestAQuote,
         RequestAWebinar,
+        RequestATrial,
         RequestADownloadFile,
         OpenFileWithoutRequest,
         InstantFileDownload,
         External,
         Internal,
-        Mail
+        Mail,
+        Other
     }
 
     public class Link

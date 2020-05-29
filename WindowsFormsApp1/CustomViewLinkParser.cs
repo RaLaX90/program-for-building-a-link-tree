@@ -47,7 +47,6 @@ namespace WindowsFormsApp1
             }
 
             return page.Sections[0];
-
         }
 
         private string GetLinkTitle(HtmlNode node)
@@ -87,7 +86,7 @@ namespace WindowsFormsApp1
                 return LinkType.RequestATrial;
             }
             else if (headertext == "Download a File" || headertext == "Download file"
-                || node.GetAttributeValue("href").Contains("#RequestDownload")) // download a file (*)
+                || node.GetAttributeValue("href").Contains("#RequestDownload")) // download a file
             {
                 return LinkType.RequestADownloadFile;
             }
@@ -115,10 +114,13 @@ namespace WindowsFormsApp1
             {
                 return LinkType.External;
             }
-            else
+            else if (IsInternalLink(href)) // internal
             {
-                // TODO: need to upgrade
                 return LinkType.Internal;
+            }
+            else // other
+            {
+                return LinkType.Other;
             }
         }
 
@@ -127,7 +129,8 @@ namespace WindowsFormsApp1
             var section = FindSection(node, page);
             var linkTitle = GetLinkTitle(node);
             var linkType = GetLinkType(node);
-            var linkURL = GetFullURL(node.GetAttributeValue("href"));
+            var debug = node.GetAttributeValue("href");
+            var linkURL = GetFullURL(debug);
 
             section.AddLink(linkTitle, linkType, linkURL);
         }
@@ -138,28 +141,28 @@ namespace WindowsFormsApp1
 
             if (page.Videos.Count() < 1)
             {
-                string videoURL = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").ToList()[0].FirstChild.GetAttributeValue("src");
+                string videoURL = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid").First().FirstChild.GetAttributeValue("src");
                 page.AddVideo(videoTitle[0].InnerText, videoURL);
             }
             else
             {
-                string videoURL = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid2").ToList()[0].FirstChild.GetAttributeValue("src");
+                string videoURL = doc.DocumentNode.CssSelect("#cpMainContent_YoutubeVid2").First().FirstChild.GetAttributeValue("src");
                 page.AddVideo(videoTitle[1].InnerText, videoURL);
             }
         }
 
         private string GetLinkWithoutAnchorAndTag(string link)
         {
-            var linkWithoutAnchor = (link.IndexOf("#") > -1) ? link.Remove(link.IndexOf("#")) : link;
-            var linkWithoutTag = (linkWithoutAnchor.IndexOf("?") > -1) ? linkWithoutAnchor.Remove(link.IndexOf("?")) : linkWithoutAnchor;
+            var linkWithoutAnchor = link.Contains("#") ? link.Remove(link.IndexOf("#")) : link;
+            var linkWithoutTag = linkWithoutAnchor.Contains("?") ? linkWithoutAnchor.Remove(link.IndexOf("?")) : linkWithoutAnchor;
             return linkWithoutTag;
-        } 
+        }
 
         private bool IsExternalLink(string link)
         {
             Uri uri = new Uri(link, UriKind.RelativeOrAbsolute);
 
-            if (!uri.IsAbsoluteUri || uri.Host.ToLower() == "localhost")
+            if (!uri.IsAbsoluteUri || uri.Host.ToLower() == "localhost" || link.Contains("tel:"))
             {
                 return false;
             }
@@ -167,12 +170,28 @@ namespace WindowsFormsApp1
             return true;
         }
 
+        private bool IsInternalLink(string link)
+        {
+            var linkWithoutAnchorAndTag = GetLinkWithoutAnchorAndTag(link);
+
+            if ((linkWithoutAnchorAndTag.Length > 0) && !linkWithoutAnchorAndTag.Contains("tel:")
+                && !linkWithoutAnchorAndTag.Contains("pdf") && !linkWithoutAnchorAndTag.Contains("doc"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private bool IsLinkValid(string link)
         {
             var linkWithoutAnchorAndTag = GetLinkWithoutAnchorAndTag(link);
 
-            if ((linkWithoutAnchorAndTag.Length > 0) && (linkWithoutAnchorAndTag.IndexOf("mailto") < 0)
-                && (linkWithoutAnchorAndTag.IndexOf("tel") < 0) && (linkWithoutAnchorAndTag.IndexOf("pdf") < 0))
+            if ((linkWithoutAnchorAndTag.Length > 0) && !linkWithoutAnchorAndTag.Contains("mailto")
+                && !linkWithoutAnchorAndTag.Contains("tel:") && !linkWithoutAnchorAndTag.Contains("pdf")
+                && !linkWithoutAnchorAndTag.Contains("doc"))
             {
                 return true;
             }
@@ -281,12 +300,7 @@ namespace WindowsFormsApp1
 
                 foreach (var link in page.AllLinks)
                 {
-                    if (!IsLinkValid(link.URL))
-                    {
-                        continue;
-                    }
-
-                    if (IsExternalLink(link.URL) || link.URL.Contains("datamaskingwiki"))
+                    if (!IsLinkValid(link.URL) || IsExternalLink(link.URL) || link.URL.Contains("datamaskingwiki"))
                     {
                         continue;
                     }
